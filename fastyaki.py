@@ -68,20 +68,24 @@ def n_bases(reference_path):
     return res
 
 
-def get_bacteria_bins(umi_ref_file, bacterias):
+def get_bacteria_bins(umi_ref_file, bacterias, only_part=False):
     res = {}
     with open(umi_ref_file) as file:
         reader = csv.reader(file)
         for row in reader:
+
             bin, bac_part = row
-            bac = bac_part.split('_')[0]
+            if not only_part:
+                bac = bac_part.split('_')[0]
+            else:
+                bac = bac_part
+
             if bac in bacterias:
                 if res.get(bac_part) is None:
                     res[bac_part] = []
                 res[bac_part].append(bin)
 
     return res
-
 
 
 def reads_from_bins(bins, bins_dir):
@@ -92,9 +96,9 @@ def reads_from_bins(bins, bins_dir):
     return reads
 
 
-def get_bacteria_reads(umi_ref_file, bins_dir, bacterias):
+def get_bacteria_reads(umi_ref_file, bins_dir, bacterias, only_part=False):
     reads = {}
-    bacteria_bins = get_bacteria_bins(umi_ref_file, bacterias)
+    bacteria_bins = get_bacteria_bins(umi_ref_file, bacterias, only_part)
     for bac, bins in bacteria_bins.items():
         reads[bac] = reads_from_bins(bins, bins_dir)
     return reads
@@ -156,15 +160,15 @@ def avg_read_identity_from_tsv(tsv_path):
 #print(bacteria)
 #get_bacteria_bins('test/umi_ref_link.csv', 'Salmonella')
 #print_bacteria_umibins('Salmonella')
-#reads = get_bacteria_reads('test/umi_ref_link.csv', '/home/mac/data/100GBraw/single/', 'Salmonella')
+reads = get_bacteria_reads('test/umi_ref_link.csv', '/home/mac/data/100GBraw/single/', 'Salmonella_5', only_part=True)
 #train, validation = split_bac_reads_evenly(reads, distribution=1)
 #reads_to_tsv(reads, 'test/Salmonella.tsv')
 #reads_to_tsv(validation, 'test/Escherichia_validation.tsv')
-#print(reads)
+print(reads)
 #print_bacteria_umibins('Escherichia_1')
 #print(n_bases('test/zymo-ref-uniq_2019-03-15.fa'))
-print(avg_read_identity_from_tsv('/home/mac/winlenbasecalls/winlen9_identity.tsv'))
-print(avg_read_identity_from_tsv('/home/mac/winlenbasecalls/winlen19_identity.tsv'))
-print(avg_read_identity_from_tsv('/home/mac/winlenbasecalls/winlen28_identity.tsv'))
-print(avg_read_identity_from_tsv('/home/mac/winlenbasecalls/guppy_standard_identity.tsv'))
+#print(avg_read_identity_from_tsv('/home/mac/winlenbasecalls/winlen9_identity.tsv'))
+#print(avg_read_identity_from_tsv('/home/mac/winlenbasecalls/winlen19_identity.tsv'))
+#print(avg_read_identity_from_tsv('/home/mac/winlenbasecalls/winlen28_identity.tsv'))
+#print(avg_read_identity_from_tsv('/home/mac/winlenbasecalls/guppy_standard_identity.tsv'))
 #make_read_id_to_fasq_file('/home/mac/winlenbasecalls/winlen9basecalls')
