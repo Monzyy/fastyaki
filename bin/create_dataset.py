@@ -97,4 +97,7 @@ if __name__ == '__main__':
     bac8splitdata.set_defaults(func=split_bac8)
 
     args = parser.parse_args()
-    args.func(args)
+    try:
+        args.func(args)
+    except AttributeError:
+        parser.print_help()
