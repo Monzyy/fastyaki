@@ -1,5 +1,6 @@
 import csv
 import os
+import h5py
 
 from ont_fast5_api.fast5_interface import get_fast5_file
 
@@ -50,3 +51,10 @@ def copy_h5_groups(source, dest, group_names):
         except KeyError:
             n_not_found += 1
     return n_not_found
+
+
+def h5_create_copy_without_reads(dest_path, h5_source):
+    res = h5py.File(dest_path, 'w')
+    res.attrs.update(h5_source.attrs)
+    res.create_group('Reads')
+    return res

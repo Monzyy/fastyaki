@@ -28,14 +28,12 @@ def split_bac8(args):
     hdf5 = h5py.File(args.source)
     source = hdf5['Reads']
 
-    output = h5py.File(args.output, 'w')
-    output.create_group('Reads')
+    output = helpers.h5_create_copy_without_reads(args.output, hdf5)
     dest_read_group = output['Reads']
 
     n_not_found = 0
     if args.test:
-        test_set = h5py.File(args.test_output, 'w')
-        test_set.create_group('Reads')
+        test_set = helpers.h5_create_copy_without_reads(args.test_output, hdf5)
         dest_test_read_group = test_set['Reads']
 
         for reads_ids in bac2read_dict.values():
@@ -89,15 +87,14 @@ if __name__ == '__main__':
     bac8splitdata.add_argument('source', help='Source HDF5 file containing mapped reads.')
     bac8splitdata.add_argument('-o', '--output', default='output.hdf5',
                                help='Output HDF5 file containing a subset of mapped reads.')
-    bac8splitdata.add_argument('-p', '--percentage', type=float, default='0.05',
+    bac8splitdata.add_argument('-p', '--percentage', type=float, default=1.0,
                                help='Use a percentage of dataset, distributed evenly over bacteria')
     bac8splitdata.add_argument('-t', '--test', type=float,
                                help='Split the dataset into a training and test set, '
                                     'and choose size of test set in percentage')
-    bac8splitdata.add_argument('--test_output', default='test_out.hdf5',
+    bac8splitdata.add_argument('--test_output', default='test.hdf5',
                                help='Output file for test set, if option -t is used. Default is test_out.hdf5.')
     bac8splitdata.set_defaults(func=split_bac8)
 
     args = parser.parse_args()
     args.func(args)
-
