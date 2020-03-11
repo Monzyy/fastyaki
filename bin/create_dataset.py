@@ -56,8 +56,9 @@ def split_bac8(args):
     hdf5.close()
     output.close()
 
-    print(f'{n_not_found} read_ids were not found in source file.'
-          f' Reads may have been filtered by prepare_mapped_reads.py')
+    if n_not_found:
+        print(f'{n_not_found} read_ids were not found in source file.'
+              f' Reads may have been filtered by prepare_mapped_reads.py')
     print('Done')
 
 
