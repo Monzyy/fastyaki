@@ -11,12 +11,12 @@ def bac2read(args):
         bac_to_read[bac] = helpers.reads_from_bins(bins, args.bins_dir)
 
     if args.hdf5source:
-        hdf5 = h5py.File(args.hdf5source)
-        h = hdf5['Reads']
+        hdf5 = h5py.File(args.hdf5source, 'r')
+        h5groups = [val.name.split('/')[-1] for val in hdf5['Reads'].values()]
+
         for bac, read_ids in bac_to_read.items():
-            for idx in read_ids:
-                if h.get(idx) is None:
-                    bac_to_read[bac].remove(idx)
+            intersect = set(h5groups).intersection(read_ids)
+            bac_to_read[bac] = list(intersect)
 
     with open(args.output, 'w+') as outfile:
         for bac, read_ids in bac_to_read.items():
@@ -25,7 +25,7 @@ def bac2read(args):
 
 def split_bac8(args):
     bac2read_dict = helpers.read2bac_file_to_dict(args.bac2read)
-    hdf5 = h5py.File(args.source)
+    hdf5 = h5py.File(args.source, 'r')
     source = hdf5['Reads']
 
     output = helpers.h5_create_copy_without_reads(args.output, hdf5)
