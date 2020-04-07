@@ -1,6 +1,7 @@
 import argparse
 import h5py
 import helpers
+import random
 
 
 def bac2read(args):
@@ -28,33 +29,35 @@ def split_bac8(args):
     hdf5 = h5py.File(args.source, 'r')
     source = hdf5['Reads']
 
-    output = helpers.h5_create_copy_without_reads(args.output, hdf5)
-    dest_read_group = output['Reads']
+    test_bacs = args.test_bacs.split(',')
 
     n_not_found = 0
-    if args.test:
-        test_set = helpers.h5_create_copy_without_reads(args.test_output, hdf5)
-        dest_test_read_group = test_set['Reads']
+    train_set = helpers.h5_create_copy_without_reads(args.output, hdf5)
+    dest_train_read_group = train_set['Reads']
+    test_set = helpers.h5_create_copy_without_reads(args.test_output, hdf5)
+    dest_test_read_group = test_set['Reads']
 
-        for reads_ids in bac2read_dict.values():
-            subset = int(len(reads_ids) * args.percentage)
-            split_index = int(subset * args.test)
-            test_groups = reads_ids[:split_index]
-            train_groups = reads_ids[split_index:subset]
+    # Make training set
+    for bac_part, reads_ids in bac2read_dict.items():
+        if any((bac_part.startswith(bac) for bac in test_bacs)):
+            continue
+        subset = int(len(reads_ids) * args.percentage)
+        train_groups = random.sample(reads_ids, subset)
 
-            n_not_found += helpers.copy_h5_groups(source, dest_read_group, train_groups)
-            n_not_found += helpers.copy_h5_groups(source, dest_test_read_group, test_groups)
+        n_not_found += helpers.copy_h5_groups(source, dest_train_read_group, train_groups)
 
-        test_set.close()
+    # Make test set
+    for bac_part, reads_ids in bac2read_dict.items():
+        if any((not bac_part.startswith(bac) for bac in test_bacs)):
+            continue
+        subset = int(len(reads_ids) * args.percentage)
+        test_groups = random.sample(reads_ids, subset)
 
-    else:
-        for reads_ids in bac2read_dict.values():
-            subset = int(len(reads_ids) * args.percentage)
-            groups = reads_ids[:subset]
-            n_not_found += helpers.copy_h5_groups(source, dest_read_group, groups)
+        n_not_found += helpers.copy_h5_groups(source, dest_test_read_group, test_groups)
 
     hdf5.close()
-    output.close()
+    train_set.close()
+    test_set.close()
 
     if n_not_found:
         print(f'{n_not_found} read_ids were not found in source file.'
@@ -86,19 +89,15 @@ if __name__ == '__main__':
     bac8splitdata = bac8subparser.add_parser('split', help='Create a subset of the bac8 dataset.')
     bac8splitdata.add_argument('bac2read', help='Bacteria to read file.')
     bac8splitdata.add_argument('source', help='Source HDF5 file containing mapped reads.')
-    bac8splitdata.add_argument('-o', '--output', default='output.hdf5',
-                               help='Output HDF5 file containing a subset of mapped reads.')
+    bac8splitdata.add_argument('test_bacs', type=str, help='Comma separated list of bacterias to use in the test '
+                                                           'set. Use the rest in the train set.')
     bac8splitdata.add_argument('-p', '--percentage', type=float, default=1.0,
                                help='Use a percentage of dataset, distributed evenly over bacteria')
-    bac8splitdata.add_argument('-t', '--test', type=float,
-                               help='Split the dataset into a training and test set, '
-                                    'and choose size of test set in percentage')
+    bac8splitdata.add_argument('-o', '--output', default='output.hdf5',
+                               help='Output HDF5 file containing a subset of mapped reads.')
     bac8splitdata.add_argument('--test_output', default='test.hdf5',
                                help='Output file for test set, if option -t is used. Default is test_out.hdf5.')
     bac8splitdata.set_defaults(func=split_bac8)
 
     args = parser.parse_args()
-    try:
-        args.func(args)
-    except AttributeError:
-        parser.print_help()
+    args.func(args)
