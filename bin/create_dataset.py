@@ -1,7 +1,9 @@
 import argparse
 import h5py
 import helpers
+import os
 import random
+import shutil
 
 
 def bac2read(args):
@@ -32,9 +34,10 @@ def split_bac8(args):
     test_bacs = args.test_bacs.split(',')
 
     n_not_found = 0
-    train_set = helpers.h5_create_copy_without_reads(args.output, hdf5)
+    os.mkdir(args.dest)
+    train_set = helpers.h5_create_copy_without_reads(os.path.join(args.dest, args.train_output), hdf5)
     dest_train_read_group = train_set['Reads']
-    test_set = helpers.h5_create_copy_without_reads(args.test_output, hdf5)
+    test_set = helpers.h5_create_copy_without_reads(os.path.join(args.dest, args.test_output), hdf5)
     dest_test_read_group = test_set['Reads']
 
     # Make training set
@@ -47,6 +50,8 @@ def split_bac8(args):
         n_not_found += helpers.copy_h5_groups(source, dest_train_read_group, train_groups)
 
     # Make test set
+    os.mkdir(os.path.join(args.dest, 'fast5_testdata'))
+    bac_bins = helpers.get_bacteria_bins(args.umi_ref_link)
     for bac_part, reads_ids in bac2read_dict.items():
         if any((not bac_part.startswith(bac) for bac in test_bacs)):
             continue
@@ -54,6 +59,12 @@ def split_bac8(args):
         test_groups = random.sample(reads_ids, subset)
 
         n_not_found += helpers.copy_h5_groups(source, dest_test_read_group, test_groups)
+
+        # Copy fast5 files
+        for bin in bac_bins[bac_part]:
+            shutil.copyfile(os.path.join(args.fast5_dir, f'{bin}.fast5'),
+                            os.path.join(args.dest, f'fast5_testdata/{bin}.fast5'))
+
 
     hdf5.close()
     train_set.close()
@@ -91,12 +102,15 @@ if __name__ == '__main__':
     bac8splitdata.add_argument('source', help='Source HDF5 file containing mapped reads.')
     bac8splitdata.add_argument('test_bacs', type=str, help='Comma separated list of bacterias to use in the test '
                                                            'set. Use the rest in the train set.')
+    bac8splitdata.add_argument('fast5_dir', help='Path to fast5 data directory')
+    bac8splitdata.add_argument('umi_ref_link', help='Path to umi_ref_link.csv file')
     bac8splitdata.add_argument('-p', '--percentage', type=float, default=1.0,
                                help='Use a percentage of dataset, distributed evenly over bacteria')
-    bac8splitdata.add_argument('-o', '--output', default='output.hdf5',
-                               help='Output HDF5 file containing a subset of mapped reads.')
+    bac8splitdata.add_argument('--dest', default='output', help='Directory to save new data sets')
+    bac8splitdata.add_argument('--train_output', default='train.hdf5',
+                               help='File name for HDF5 training set.')
     bac8splitdata.add_argument('--test_output', default='test.hdf5',
-                               help='Output file for test set, if option -t is used. Default is test_out.hdf5.')
+                               help='File name for HDF5 test set.')
     bac8splitdata.set_defaults(func=split_bac8)
 
     args = parser.parse_args()

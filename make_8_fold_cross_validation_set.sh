@@ -2,16 +2,17 @@
 BAC8_TO_READ=$1
 SOURCE=$2
 DEST=$3
-PERCENTAGE=$4
+FAST5_DIR=$4
+UMI_REF_LINK=$5
+PERCENTAGE=$6
 
-mkdir DEST
+mkdir $DEST
 
 for CUR_BAC in Bacillus Enterococcus Escherichia Lactobacillus Listeria Pseudomonas Salmonella Staphylococcus
 do
   echo "Making $CUR_BAC"
   CUR_DIR=$DEST/bac8_${PERCENTAGE}_test$CUR_BAC
-  mkdir -p $CUR_DIR
-  python3 ./bin/create_dataset.py bac8 split $BAC8_TO_READ $SOURCE $CUR_BAC -p $PERCENTAGE --output $CUR_DIR/train.hdf5 --test_output $CUR_DIR/test.hdf5
+  python3 ./bin/create_dataset.py bac8 split $BAC8_TO_READ $SOURCE $CUR_BAC $FAST5_DIR $UMI_REF_LINK -p $PERCENTAGE --dest $CUR_DIR
 done
 
 echo "Done!"
