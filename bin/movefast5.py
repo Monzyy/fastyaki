@@ -14,6 +14,4 @@ for subdir, dirs, files in os.walk(args.source):
         if re.search('.txt', file):
             continue
         new_filename = subdir[subdir.rfind('/') + 1:] + '.fast5'
-        copyfile(os.path.join(subdir, file), os.path.join(subdir, new_filename))
-        os.rename(os.path.join(subdir, new_filename), os.path.join(args.dest, new_filename))
-
+        copyfile(os.path.join(subdir, file), os.path.join(args.dest, new_filename))
