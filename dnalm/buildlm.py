@@ -1,63 +1,94 @@
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-from collections import Counter
+from collections import Counter, defaultdict
 import csv
+from itertools import product
 import math
-import numpy as np
 import os
+
+
+def letter_to_number(seq):
+    conversion = {'A': '0', 'C': '1', 'G': '2', 'T': '3'}
+    return ''.join(conversion[l] for l in seq)
 
 
 def main(args):
     # Load each reference and strip newlines
+    alphabet = '0123' if args.int else 'ACTG'
     source = open(args.source, 'r')
     references = []
     ref = ''
+    emit = False if args.leave_out else True
     for line in source:
         if line.startswith('>'):
             if ref:
-                references.append(ref)
+                if emit:
+                    references.append(ref)
+                    emit = False if args.leave_out else True
                 ref = ''
+            if args.leave_out and args.leave_out not in line:
+                emit = True
             continue
         ref += line.strip()
     references.append(ref)
     source.close()
 
-    # Count word frequencies
+    # Initialize all words with 1 count
     word_length = args.word_length
-    counter = Counter()
-    for ref in references:
-        counter.update(Counter([ref[i:i+word_length] for i in range(len(ref) - word_length)]))
+    counter = defaultdict(Counter)
+    #for word in (''.join(x) for x in product(alphabet, repeat=word_length)):
+    #    counter[word[:-1]][word[-1]] = 1
 
-    print(f'Hapax legomenom percentage: {100 * (len([c for c in counter.values() if c == 1])) / len(counter)}')
+    # Count word frequencies
+    for ref in references:
+        for i in range(len(ref) - word_length):
+            prefix = ref[i:i+word_length-1]
+            end_char = ref[i+word_length]
+            if args.int:
+                try:
+                    prefix = letter_to_number(prefix)
+                    end_char = letter_to_number(end_char)
+                except KeyError:
+                    continue
+            counter[prefix][end_char] += 1
+
+    hapax = 0
+    for prefix in counter.values():
+        for c in prefix.values():
+            if c == 1:
+                hapax += 1
+
+    print(f'Hapax legomenom percentage: {100 * (hapax / (len(counter) * 4))}')
 
     # Calculate log probabilities
-    log_probs = {}
-    prefix_sum_cache = {}
+    probs = {}
     """ cache for sum of counts of words with prefix. Ex:
     >>> counter[AA]=2, counter[AC]=1, counter[AG]=1, counter[AT]=1
     >>> prefix_sum_cache[A] = 5
     """
-    filtered_count = 0
-    for word in counter.keys():
-        # Filter word with length above 8
-        #if len(word) > 8:
-        #    # These words needs at least 3 entries in counter
-        #    if counter[word] <= 3:
-        #        filtered_count += 1
-        #        continue
-        word_prefix = word[:-1]
-        if prefix_sum_cache.get(word_prefix):
-            prefix_sum = prefix_sum_cache[word_prefix]
-        else:
-            same_prefix_words = [w for w in counter.keys() if len(w) == len(word) and w.startswith(word_prefix)]
-            prefix_sum = sum([counter[w] for w in same_prefix_words])
-            prefix_sum_cache[word_prefix] = prefix_sum
+    for prefix in counter.keys():
+        prefix_sum = sum(counter[prefix].values())
+        for end_char in counter[prefix].keys():
+            prob = counter[prefix][end_char] / prefix_sum
 
-        log_probs[word] = math.log(counter[word] / prefix_sum)
+            # skip .25 probabilities. In most cases these are OOV words
+            if prob == 0.25:
+                continue
+            if args.log:
+                prob = math.log(prob)
+            probs[prefix+end_char] = prob
 
     # Write log probabilities to file destination
-    with open(os.path.join(args.dest, f'{args.word_length}_gram.txt'), 'w+', newline='') as csv_file:
+    file_name = '_'.join((args.name, str(args.word_length), 'gram'))
+    if args.int:
+        file_name += '_int'
+    if args.log:
+        file_name += '_log'
+    if args.leave_out:
+        file_name += f'_WO{args.leave_out}'
+    file_name += '.lm'
+    with open(os.path.join(args.dest, file_name), 'w+', newline='') as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerows(log_probs.items())
+        writer.writerows(probs.items())
 
 
 def argparser():
@@ -67,6 +98,10 @@ def argparser():
     )
     parser.add_argument("source")
     parser.add_argument("dest")
-    parser.add_argument("--word_length", type=int, default=12)
+    parser.add_argument('--word_length', type=int, default=12)
+    parser.add_argument('--int', action='store_true')
+    parser.add_argument('--log', action='store_true')
+    parser.add_argument('--name', type=str, default='')
+    parser.add_argument('--leave_out', type=str)
 
     return parser
