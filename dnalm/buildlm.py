@@ -23,6 +23,9 @@ def main(args):
             if ref:
                 if emit:
                     references.append(ref)
+                    if args.reverse:
+                        reverse_ref  = ref[::-1]
+                        references.append(reverse_ref)
                     emit = False if args.leave_out else True
                 ref = ''
             if args.leave_out and args.leave_out not in line:
@@ -30,6 +33,9 @@ def main(args):
             continue
         ref += line.strip()
     references.append(ref)
+    if args.reverse:
+        reverse_ref = ref[::-1]
+        references.append(reverse_ref)
     source.close()
 
     # Initialize all words with 1 count
@@ -103,5 +109,6 @@ def argparser():
     parser.add_argument('--log', action='store_true')
     parser.add_argument('--name', type=str, default='')
     parser.add_argument('--leave_out', type=str)
+    parser.add_argument('--reverse', action='store_true')
 
     return parser
